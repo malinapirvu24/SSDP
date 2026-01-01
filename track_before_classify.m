@@ -87,4 +87,41 @@ for k = 1:K  % propagation over time
 end
 
 
-%%
+%% Parallel particle filters
+
+% Storage for class-conditional likelihoods at each time
+L_c = zeros(C, K);          % L_c(c,k) = p(z_k | Z_{k-1}, c) -> compute one each measurement
+P_c_history = zeros(C, K);     % class probabilities over time
+
+for k = 1:K  % -> for all measurements
+
+    % Run PF for each class in parallel
+    for c = 1:C % per clas, per drawn particle (via vector operation)
+
+        % State prediction: propagate particles with state model 
+        w = sigma_w * randn(1, Np);                 % scalar noise per particle
+        s_particles(:,:,c) = F*s_particles(:,:,c) + G*w;
+
+    end
+
+    % Store current class probabilities (before update at time k)-> analysis
+    P_c_history(:,k) = P_c;
+    
+    % Measurement update: PSF + likelihood (per class/per particle)
+    for c = 1:C
+        x = s_particles(1,:,c);          % 1 x Np, particle positions
+        sig = sigma_c(c);
+
+        % Build class-dependent PSF for all particles: H is N x Np
+        H = 1/(sqrt(2*pi)*sig) * exp(-(r - x).^2/(2*sig^2));
+
+        % For next step: compute per-particle likelihood l_i = p(z_k | s_k^{i}, c)
+       
+    end
+
+  
+end
+
+
+
+
