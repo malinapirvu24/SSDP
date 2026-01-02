@@ -115,11 +115,43 @@ for k = 1:K  % -> for all measurements
         % Build class-dependent PSF for all particles: H is N x Np
         H = 1/(sqrt(2*pi)*sig) * exp(-(r - x).^2/(2*sig^2));
 
-        % For next step: compute per-particle likelihood l_i = p(z_k | s_k^{i}, c)
-       
+        % Compute per-particle likelihood l_i = p(z_k | s_k^{i}, c)
+
+        % Current measurement snapshot
+        zk = z(:,k);
+
+        % Constant over particles (for fixed k)
+        zTz = zk.' * zk;
+
+        % Particle-dependent inner products
+        hTh = sum(H.^2, 1);          % 1 x Np, each is h^T h -> sum down the rows for each PSF (column by column)
+        hTz = (H.' * zk).';          % 1 x Np, each is h^T z -> row vector result
+
+        % Compute chi and xi (from lecture notes derivation)
+        chi = (hTh/(sigma_n^2)) + (1/(sigma_a^2));          % 1 x Np
+        xi  = (sigma_a^2/sigma_n^2) * hTh + 1;              % 1 x Np
+
+        % Log-likelihood per particle (adapted from lecture notes derivation + error fix)
+        lambda = -(N/2)*log(2*pi*sigma_n^2) ...
+            - (zTz/(2*sigma_n^2)) ...
+            - 0.5*log(xi) ...
+            + 0.5 * ((hTz/(sigma_n^2)).^2) ./ chi;      % 1 x Np
+
+        % Class-conditional log-likelihood L_c(use lecture trick)
+        lam_max = max(lambda);  % across all particles, pick highest log-likelihood
+        logL_c = log(mean(exp(lambda - lam_max))) + lam_max;
+        L_c(c,k) = logL_c; % size C x Np
+
+        % Weight update for this class (use lecture trick)
+        gamma_unnorm = 1/Np * exp(lambda - lam_max).';                  % Np x 1
+        gamma(:,c) = gamma_unnorm / sum(gamma_unnorm);           % normalized Np x C
+
+        % Check if the weights are correctly defined:
+        % sum(gamma(:,c))
+
     end
 
-  
+
 end
 
 
