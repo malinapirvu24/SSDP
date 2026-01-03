@@ -140,7 +140,7 @@ for k = 1:K  % -> for all measurements
         % Class-conditional log-likelihood L_c(use lecture trick)
         lam_max = max(lambda);  % across all particles, pick highest log-likelihood
         logL_c = log(mean(exp(lambda - lam_max))) + lam_max;
-        L_c(c,k) = logL_c; % size C x Np
+        L_c(c,k) = logL_c; % size C x K
 
         % Weight update for this class (use lecture trick)
         gamma_unnorm = 1/Np * exp(lambda - lam_max).';                  % Np x 1
@@ -148,6 +148,14 @@ for k = 1:K  % -> for all measurements
 
         % Check if the weights are correctly defined:
         % sum(gamma(:,c))
+
+        % Resampling using the cumulative weights
+        cdf = cumsum(gamma(:,c));     % cumulative weights, Np x 1 -> sum over rows
+        u = rand(Np,1);               % uniform samples
+        idx = arrayfun(@(x) find(cdf >= x, 1, 'first'), u); % find particle index using the cdf 
+
+        s_particles(:,:,c) = s_particles(:,idx,c);     % resample particles 
+        gamma(:,c) = (1/Np) * ones(Np,1);              % reset weights
 
     end
 
