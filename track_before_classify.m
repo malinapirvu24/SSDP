@@ -43,6 +43,7 @@ x0_std  = 10;       % [m]
 s_particles = zeros(2, Np, C);   % allocate particles for each class 
 gamma = zeros(Np, C);            % allocate weights for each particle, per class
 
+  
 for c = 1:C
     x0 = x0_mean + x0_std*randn(1, Np);      % draw Np initial position samples-> Gaussian distribution
     s_particles(:,:,c) = [x0; ones(1, Np)];  % set initial state 
@@ -159,8 +160,70 @@ for k = 1:K  % -> for all measurements
 
     end
 
+    % Bayesian class update using log-likelihoods
+    % Prior: P(c | Z_{k-1})
+    logP_prior = log(P_c);            % C x 1
+
+    % Likelihood: log p(z_k | Z_{k-1}, c)
+    logL = L_c(:,k);                  % C x 1
+
+    % Unnormalized log posterior
+    logPost = logL + logP_prior;      % log P(c | Z_k) up to constant
+
+    % Normalize
+    m = max(logPost);                 % use the trick by substracting the maximum
+    P_c = exp(logPost - m);
+    P_c = P_c / sum(P_c);             % P(c | Z_k)
+
+    % Store posterior
+    P_c_history(:,k) = P_c;
+    
+    % Decision
+    [~, c_hat(k)] = max(P_c);
 
 end
+% Check that the sum over posterior is 1 -> compute deviation across all 
+max(abs(sum(P_c_history,1) - 1))
+
+%% RESULTS
+
+%% Plot posterior class probability over time
+% Build posterior including prior at k = 0
+P_plot = zeros(C, K+1);
+P_plot(:,1) = [0.5; 0.5];          % prior P(c | Z_0)
+P_plot(:,2:end) = P_c_history;     % posteriors P(c | Z_k), k = 1..K
+
+t = 0:K;
+
+figure;
+plot(t, P_plot(1,:), 'LineWidth',1.5); hold on;
+plot(t, P_plot(2,:), 'LineWidth',1.5);
+xlabel('Time step k');
+ylabel('P(c | Z_k)');
+title('Evolution of class posterior probabilities P(c | Z_k)')
+legend('Class 1','Class 2');
+grid on;
+
+
+%% Plot posterior distribution of target position at the final step
+% Most likely class at final time
+[~, c_final] = max(P_c);
+
+% Extract particle positions for that class
+x_particles_final = s_particles(1,:,c_final);
+
+% Estimated position (posterior mean)
+x_est = mean(x_particles_final);
+
+figure;
+histogram(x_particles_final, 50, 'Normalization','pdf'); hold on;
+xline(s_true(1,K), 'r', 'LineWidth',2);      % true position
+xline(x_est, '--k', 'LineWidth',2);          % estimated position
+xlabel('Position x [m]');
+ylabel('Particle density');
+title('Posterior distribution of target position (final time step)');
+legend('Particles','True position','Estimated position');
+grid on;
 
 
 
