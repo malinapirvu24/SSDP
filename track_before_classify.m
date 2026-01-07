@@ -25,7 +25,7 @@ Qw = sigma_w^2;     % scalar -> only position is random
 
 % Classes (PSF widths)
 C = 2;
-sigma_c = [1, 5];  % [m], class 1 narrow, class 2 wide -> expressed in terms of resolution cells
+sigma_c = [2 5];  % [m], class 1 narrow, class 2 wide -> expressed in terms of resolution cells
 
 % Measurement noise and amplitude prior -> Gaussian 0 mean
 sigma_n = 1;
@@ -37,7 +37,7 @@ Np = 2000; % number of particles
 % Prior on initial relative position x0 (prior on initial state) -> assume
 % Gaussian distribution
 x0_mean = 150;      % [m]
-x0_std  = 10;       % [m]
+x0_std  = 25;       % [m]
 
 % Initialize particles and weights for each class
 s_particles = zeros(2, Np, C);   % allocate particles for each class 
@@ -93,6 +93,7 @@ end
 % Storage for class-conditional likelihoods at each time
 L_c = zeros(C, K);          % L_c(c,k) = p(z_k | Z_{k-1}, c) -> compute one each measurement
 P_c_history = zeros(C, K);     % class probabilities over time
+x_est_history = zeros(1, K);   % relative position over time
 
 for k = 1:K  % -> for all measurements
 
@@ -180,6 +181,7 @@ for k = 1:K  % -> for all measurements
     
     % Decision
     [~, c_hat(k)] = max(P_c);
+    x_est_history(k) = mean(s_particles(1,:,c_hat(k)));
 
 end
 % Check that the sum over posterior is 1 -> compute deviation across all 
@@ -201,7 +203,9 @@ plot(t, P_plot(2,:), 'LineWidth',1.5);
 xlabel('Time step k');
 ylabel('P(c | Z_k)');
 title('Evolution of class posterior probabilities P(c | Z_k)')
-legend('Class 1','Class 2');
+legend(sprintf('Class 1 (\\sigma_c = %.1f m)', sigma_c(1)), ...
+       sprintf('Class 2 (\\sigma_c = %.1f m)', sigma_c(2)), ...
+       'Location','best');
 grid on;
 
 
@@ -221,10 +225,18 @@ xline(s_true(1,K), 'r', 'LineWidth',2);      % true position
 xline(x_est, '--k', 'LineWidth',2);          % estimated position
 xlabel('Position x [m]');
 ylabel('Particle density');
-title('Posterior distribution of target position (final time step)');
+title(sprintf('Posterior distribution of target position (final time step) for \\sigma_w = %.1f m ', sigma_w));
 legend('Particles','True position','Estimated position');
 grid on;
 
-
+% Plot estimated position over time
+figure;
+plot(1:K, s_true(1,:), 'r', 'LineWidth',1.5); hold on;
+plot(1:K, x_est_history, '--k', 'LineWidth',1.5);
+xlabel('Time step k');
+ylabel('Position x [m]');
+legend('True position','Estimated position');
+title(sprintf('Target position estimate over time (\\sigma_{x0} = %.d m)', x0_std));
+grid on;
 
 
